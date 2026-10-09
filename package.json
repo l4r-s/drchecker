@@ -1,0 +1,52 @@
+{
+  "name": "drcheck",
+  "version": "0.1.0",
+  "description": "Check a website's Domain Rating from your terminal, ranked on domainrating.lol.",
+  "keywords": [
+    "domain-rating",
+    "dr",
+    "ahrefs",
+    "seo",
+    "backlinks",
+    "cli",
+    "domainrating"
+  ],
+  "homepage": "https://domainrating.lol",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/l4r-s/drcheck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/l4r-s/drcheck/issues"
+  },
+  "license": "MIT",
+  "author": "Lars Bättig",
+  "type": "module",
+  "bin": {
+    "drcheck": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "dev": "tsx src/cli.ts",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

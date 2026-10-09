@@ -4,17 +4,25 @@ export type Args =
   | { kind: "help" }
   | { kind: "version" }
   | { kind: "usage"; message: string }
-  | { kind: "check"; domain: string; json: boolean; create: boolean };
+  | {
+      kind: "check";
+      domain: string;
+      json: boolean;
+      create: boolean;
+      full: boolean;
+    };
 
 export function parseArgs(argv: readonly string[]): Args {
   let json = false;
   let createListing = true;
+  let full = false;
   const positional: string[] = [];
   for (const arg of argv) {
     if (arg === "-h" || arg === "--help") return { kind: "help" };
     if (arg === "-v" || arg === "--version") return { kind: "version" };
     if (arg === "--json") json = true;
     else if (arg === "--no-create") createListing = false;
+    else if (arg === "--full") full = true;
     else if (arg.startsWith("-") && arg.length > 1)
       return { kind: "usage", message: `Unknown option: ${arg}` };
     else if (arg.trim()) positional.push(arg.trim());
@@ -29,10 +37,16 @@ export function parseArgs(argv: readonly string[]): Args {
       kind: "usage",
       message: `One domain at a time, please (got ${positional.length}).`,
     };
+  if (full && json)
+    return {
+      kind: "usage",
+      message: "--full draws a screen and --json prints data: pick one.",
+    };
   return {
     kind: "check",
     domain: positional[0]!,
     json,
     create: createListing,
+    full,
   };
 }

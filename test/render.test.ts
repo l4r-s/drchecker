@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   colorLevel,
+  drawsSextants,
   palette,
   prefersLight,
   to256,
@@ -16,6 +17,8 @@ import {
 } from "../src/derive.js";
 import {
   fit,
+  hasHistory,
+  pixels,
   pixelWidth,
   render,
   sparkline,
@@ -57,7 +60,7 @@ test("the share graphic's listing prints the graphic's lines", () => {
   const lines = render(GRAPHIC, { width: 100, palette: plain });
   assert.equal(lines[0], "✓ Domain Rating read from Ahrefs");
   assert.equal(lines[1], "");
-  const block = lines.slice(2, 9).map((line) => line.slice(26));
+  const block = lines.slice(2, 9).map((line) => line.slice(27));
   assert.deepEqual(block, [
     "domain     confettisaas.com",
     "rating     49/100  ███████░░░░░░░",
@@ -67,20 +70,83 @@ test("the share graphic's listing prints the graphic's lines", () => {
     `history    ${sparkline(GRAPHIC.rating!.history, 12)}  +4 since Sep 17`,
     "measured   2026-10-09",
   ]);
-  assert.equal(lines[9], "Domain Rating, out of 100");
+  assert.equal(lines[9], "  Domain Rating, out of 100");
   // Unlocked and owned: nothing to claim or unlock, so nothing after it.
   assert.equal(lines.length, 10);
 });
 
-test("the pixel face draws the rating, a cell between glyphs", () => {
+test("the pixel face draws the rating in squares, padded on the left", () => {
   const lines = render(GRAPHIC, { width: 100, palette: plain });
-  const pixels = lines.slice(2, 9).map((line) => line.slice(0, 22));
-  // Row 0: "4" is 00010 and "9" is 01110. Row 4: 11111 and 00001.
-  assert.equal(pixels[0], "      ██      ██████  ");
-  assert.equal(pixels[4], "██████████          ██");
-  assert.equal(pixelWidth("49"), 22);
-  assert.equal(pixelWidth("31.9"), 38);
+  const pixels = lines.slice(2, 9).map((line) => line.slice(0, 23));
+  // Row 0: "4" is 00010 and "9" is 01110. Row 4: 11111 and 00001. Two
+  // columns of padding, then one column between the glyphs.
+  assert.equal(pixels[0], "        ▗▖     ▗▖▗▖▗▖  ");
+  assert.equal(pixels[4], "  ▗▖▗▖▗▖▗▖▗▖         ▗▖");
+  assert.equal(pixelWidth("49"), 23);
+  assert.equal(pixelWidth("31.9"), 37);
   assert.equal(pixelWidth("100"), 34);
+});
+
+test("unlit cells are squares too once there is colour", () => {
+  const [row] = pixels("4", color);
+  // Row 0 of "4" is 00010: every cell is a square, only the paint differs.
+  assert.equal(row!.map((segment) => segment.text).join(""), "  ▗▖▗▖▗▖▗▖▗▖");
+  assert.equal(
+    row!.filter((segment) => segment.paint === color.accent).length,
+    1,
+  );
+});
+
+test("terminals that draw sextants get the tighter squares, same columns", () => {
+  const ghostty = palette(
+    { COLORTERM: "truecolor", TERM_PROGRAM: "ghostty" },
+    true,
+  );
+  assert.equal(ghostty.sextants, true);
+  const [row] = pixels("4", ghostty);
+  assert.equal(
+    row!.map((segment) => segment.text).join(""),
+    "  " + "\u{1FB39}\u{1FB13}".repeat(5),
+  );
+  const lines = render(GRAPHIC, { width: 100, palette: ghostty });
+  const quads = render(GRAPHIC, { width: 100, palette: color });
+  assert.deepEqual(lines.map(visibleLength), quads.map(visibleLength));
+  assert.equal(pixelWidth("49"), 23);
+});
+
+test("sextants only where the terminal is known to draw them", () => {
+  assert.equal(drawsSextants({ TERM_PROGRAM: "ghostty" }), true);
+  assert.equal(drawsSextants({ TERM: "xterm-ghostty" }), true);
+  assert.equal(
+    drawsSextants({ TERM: "tmux-256color", GHOSTTY_RESOURCES_DIR: "/x" }),
+    true,
+  );
+  assert.equal(drawsSextants({ TERM: "xterm-kitty" }), true);
+  assert.equal(drawsSextants({ TERM_PROGRAM: "WezTerm" }), true);
+  assert.equal(drawsSextants({ TERM_PROGRAM: "vscode" }), false);
+  assert.equal(drawsSextants({ TERM_PROGRAM: "Apple_Terminal" }), false);
+  assert.equal(drawsSextants({ TERM_PROGRAM: "iTerm.app" }), false);
+  assert.equal(drawsSextants({}), false);
+});
+
+test("a history that never moved is left out", () => {
+  const flat = {
+    ...GRAPHIC,
+    rating: {
+      ...GRAPHIC.rating!,
+      history: [
+        { on: "2026-09-17", dr: 49 },
+        { on: "2026-10-09", dr: 49 },
+      ],
+      change: { delta: 0, since: "2026-09-17" },
+    },
+  };
+  const lines = render(flat, { width: 100, palette: plain });
+  assert.ok(!lines.some((line) => line.includes("history")));
+  assert.ok(lines.some((line) => line.endsWith("measured   2026-10-09")));
+  assert.equal(hasHistory(flat.rating.history), false);
+  assert.equal(hasHistory([{ on: "2026-10-09", dr: 49 }]), false);
+  assert.equal(hasHistory(GRAPHIC.rating!.history), true);
 });
 
 test("a locked listing nobody owns ends with where to claim it", () => {
@@ -108,7 +174,7 @@ test("an owned locked listing is only offered the unlock", () => {
 
 test("a narrow terminal stacks the pixels above the block", () => {
   const lines = render(GRAPHIC, { width: 40, palette: plain });
-  assert.equal(lines[9], "Domain Rating, out of 100");
+  assert.equal(lines[9], "  Domain Rating, out of 100");
   assert.equal(lines[11], "domain     confettisaas.com");
   for (const line of lines) assert.ok(visibleLength(line) <= 39, line);
   assert.match(lines[15]!, /^category   Directories, Launch & Disco…$/);
@@ -205,13 +271,20 @@ test("the command line takes one domain and a few flags", () => {
     domain: "example.com",
     json: false,
     create: true,
+    full: false,
   });
   assert.deepEqual(parseArgs(["--json", "--no-create", "example.com"]), {
     kind: "check",
     domain: "example.com",
     json: true,
     create: false,
+    full: false,
   });
+  assert.equal(
+    (parseArgs(["example.com", "--full"]) as { full: boolean }).full,
+    true,
+  );
+  assert.equal(parseArgs(["example.com", "--full", "--json"]).kind, "usage");
   assert.equal(parseArgs([]).kind, "usage");
   assert.equal(parseArgs(["a.com", "b.com"]).kind, "usage");
   assert.equal(parseArgs(["--nope", "a.com"]).kind, "usage");

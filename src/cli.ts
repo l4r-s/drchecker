@@ -4,6 +4,7 @@ import { palette, type Palette } from "./ansi.js";
 import { ApiError, DEFAULT_API_URL, create, lookup } from "./api.js";
 import { render, type DrcheckResult } from "./render.js";
 import { parseArgs, type Args } from "./args.js";
+import { runFull } from "./full.js";
 import { spin } from "./spinner.js";
 
 /**
@@ -25,6 +26,7 @@ Usage
   npx drcheck <domain>
 
 Options
+  --full        Full screen, refreshed every hour (r refreshes, q quits)
   --json        Print the raw result as JSON
   --no-create   Only look the domain up; never list it
   -v, --version Print the version
@@ -41,6 +43,7 @@ Environment
 
 Examples
   npx drcheck confettisaas.com
+  npx drcheck confettisaas.com --full
   npx drcheck https://www.example.com/pricing --json
 `;
 
@@ -72,6 +75,10 @@ async function check(
   p: Palette,
 ): Promise<number> {
   const errP = palette(process.env, Boolean(process.stderr.isTTY));
+  // Keys come from stdin and the screen goes to stdout: both have to be the
+  // terminal, not a pipe.
+  if (args.full && !(process.stdout.isTTY && process.stdin.isTTY))
+    return fail(errP, "--full needs an interactive terminal.");
   const options = {
     baseUrl: apiBase(),
     userAgent: `drcheck/${version} (+https://github.com/l4r-s/drcheck)`,
@@ -115,6 +122,16 @@ async function check(
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return 0;
   }
+
+  if (args.full)
+    return runFull({
+      result,
+      // The refresh only ever reads: listing happened, if at all, above.
+      refresh: () => lookup(args.domain, options),
+      palette: p,
+      stdout: process.stdout,
+      stdin: process.stdin,
+    });
 
   const lines = render(result, {
     width: process.stdout.columns || 80,

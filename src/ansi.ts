@@ -31,6 +31,8 @@ export interface Palette {
   off: Paint;
   dim: Paint;
   link: (url: string, text?: string) => string;
+  /** Whether the terminal draws sextants itself (see `drawsSextants`). */
+  sextants: boolean;
 }
 
 type Env = Record<string, string | undefined>;
@@ -82,6 +84,25 @@ function rgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+/**
+ * Whether the terminal draws the sextant block characters (U+1FB00–1FB3B)
+ * itself, the way every terminal draws the ordinary block elements. Only a
+ * few do; anywhere else they come from the font, and most fonts have none, so
+ * they print as empty boxes (VS Code's terminal among them). Ghostty, kitty
+ * and WezTerm are the ones known to draw them, recognised by what they put in
+ * the environment, which also survives into a tmux started from them.
+ */
+export function drawsSextants(env: Env): boolean {
+  return (
+    env.TERM_PROGRAM === "ghostty" ||
+    env.TERM === "xterm-ghostty" ||
+    env.GHOSTTY_RESOURCES_DIR !== undefined ||
+    env.TERM === "xterm-kitty" ||
+    env.KITTY_WINDOW_ID !== undefined ||
+    env.TERM_PROGRAM === "WezTerm"
+  );
+}
+
 /** The nearest colour in the xterm 6×6×6 cube or the grey ramp. */
 export function to256(hex: string): number {
   const [r, g, b] = rgb(hex);
@@ -121,6 +142,7 @@ const plain: Paint = (text) => text;
 
 export function palette(env: Env, isTTY: boolean): Palette {
   const level = colorLevel(env, isTTY);
+  const sextants = drawsSextants(env);
   if (level === 0)
     return {
       level,
@@ -134,6 +156,7 @@ export function palette(env: Env, isTTY: boolean): Palette {
       off: plain,
       dim: plain,
       link: (url, text) => text ?? url,
+      sextants,
     };
   const light = prefersLight(env);
   const bold = sgr("1", "22");
@@ -151,11 +174,14 @@ export function palette(env: Env, isTTY: boolean): Palette {
     off:
       level === 1
         ? sgr("90", "39")
-        : color(level, light ? "#e4e4e7" : "#27272a", 90),
+        : // Light enough to read as a square on any dark background
+          // (#000 through the #2b2b2b greys), faint enough to stay behind.
+          color(level, light ? "#e4e4e7" : "#3f3f46", 90),
     dim: color(level, light ? "#d4d4d8" : "#3f3f46", 90),
     // OSC 8 hyperlinks: clickable where the terminal supports them, and the
     // URL itself is always the visible text so nothing is lost where not.
     link: (url, text) => `\x1b]8;;${url}\x1b\\${text ?? url}\x1b]8;;\x1b\\`,
+    sextants,
   };
 }
 

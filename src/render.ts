@@ -55,8 +55,40 @@ export const GLYPHS: Record<string, readonly string[]> = {
   ".": ["0", "0", "0", "0", "0", "0", "1"],
 };
 
-/** Two columns make a square-ish cell in a terminal font. */
-const CELL = "██";
+/** How big the pixel face is drawn: 1 everywhere, 2 in `--full` when the
+ *  screen has room for it. */
+export type Scale = 1 | 2;
+
+/**
+ * One pixel, row by row. At 1 it is two columns holding a square drawn by
+ * the lower-right and lower-left quadrants, so every cell is a square with a
+ * gap around it, like the art's, and neighbours never merge into one block.
+ * At 2 it is four columns by two rows, the same square with half a column and
+ * half a row of air, which brings the gaps closer to the art's. Quadrants and
+ * half blocks are block elements, which terminals draw themselves rather than
+ * take from the font, so the square is the same size everywhere.
+ */
+const CELLS: Record<Scale, readonly string[]> = {
+  1: ["▗▖"],
+  2: ["▗▄▄▖", "▐██▌"],
+};
+/**
+ * The 1× pixel where the terminal draws sextants itself: the lower two thirds
+ * of a column and a half. In a terminal's usual cell shape that is a square
+ * too, with half the gap the quadrants leave, closer to the art's.
+ */
+const SEXTANT_CELL = "\u{1FB39}\u{1FB13}";
+/** A pixel's columns, whichever characters draw it. */
+const CELL_COLUMNS: Record<Scale, number> = { 1: 2, 2: 4 };
+
+function cellRows(scale: Scale, p: Palette): readonly string[] {
+  return scale === 1 && p.sextants ? [SEXTANT_CELL] : CELLS[scale];
+}
+/** Between the pixels and the left edge. */
+const PAD = "  ";
+/** Between two glyphs: with the half column of air inside each cell, a gap
+ *  one cell wide, like the art's. */
+const GLYPH_GAPS: Record<Scale, string> = { 1: " ", 2: "   " };
 /** The block's key column: the longest key and three spaces, like the art. */
 const KEY_WIDTH = 11;
 /** Between the pixels and the block. */
@@ -107,29 +139,56 @@ function merge(segments: Segment[]): Segment[] {
   return out;
 }
 
-/** The rating in the pixel face: seven rows, a cell's gap between glyphs. */
-export function pixels(label: string, p: Palette): Segment[][] {
+/** The rating in the pixel face: seven rows of cells, padded on the left. */
+export function pixels(
+  label: string,
+  p: Palette,
+  scale: Scale = 1,
+): Segment[][] {
   const glyphs = [...label].map((char) => GLYPHS[char] ?? GLYPHS["0"]!);
-  // Without colour an unlit cell would print as a lit one, so it is blank.
-  const unlit = p.level === 0 ? "  " : CELL;
   return Array.from({ length: 7 }, (_, y) =>
-    merge(
-      glyphs.flatMap((rows, index) => [
-        ...(index > 0 ? [{ text: "  " }] : []),
-        ...[...rows[y]!].map((on) =>
-          on === "1"
-            ? { text: CELL, paint: p.accent }
-            : { text: unlit, paint: p.off },
-        ),
-      ]),
+    cellRows(scale, p).map((cell) =>
+      merge(
+        glyphs.flatMap((rows, index) => [
+          { text: index > 0 ? GLYPH_GAPS[scale] : PAD },
+          ...[...rows[y]!].map((on) =>
+            on === "1"
+              ? { text: cell, paint: p.accent }
+              : // Without colour an unlit cell would print as a lit one,
+                // so it is blank.
+                {
+                  text: p.level === 0 ? " ".repeat(CELL_COLUMNS[scale]) : cell,
+                  paint: p.off,
+                },
+          ),
+        ]),
+      ),
     ),
+  ).flat();
+}
+
+/** The columns the pixel face takes, its left padding included. */
+export function pixelWidth(label: string, scale: Scale = 1): number {
+  const glyphs = [...label].map((char) => GLYPHS[char] ?? GLYPHS["0"]!);
+  const cells = glyphs.reduce((sum, rows) => sum + rows[0]!.length, 0);
+  return (
+    PAD.length +
+    cells * CELL_COLUMNS[scale] +
+    Math.max(0, glyphs.length - 1) * GLYPH_GAPS[scale].length
   );
 }
 
-export function pixelWidth(label: string): number {
-  const glyphs = [...label].map((char) => GLYPHS[char] ?? GLYPHS["0"]!);
-  const cells = glyphs.reduce((sum, rows) => sum + rows[0]!.length, 0);
-  return cells * CELL.length + Math.max(0, glyphs.length - 1) * 2;
+/** The narrowest terminal that fits the pixels beside the block. */
+export function sideBySideColumns(label: string, scale: Scale = 1): number {
+  // A row ending in the last column wraps in some terminals, so every layout
+  // keeps one column free.
+  return pixelWidth(label, scale) + GUTTER + KEY_WIDTH + 20 + 1;
+}
+
+/** A history worth drawing: one that moved. A rating that read the same
+ *  every day would only print a flat bar. */
+export function hasHistory(history: readonly HistoryPoint[]): boolean {
+  return new Set(history.map((point) => point.dr)).size > 1;
 }
 
 /** The rating out of 100, as cells: the art's bar beside the number. */
@@ -194,17 +253,16 @@ function block(result: DrcheckResult, p: Palette): Line[] {
   );
   if (topPercent !== null)
     lines.push({ key: "standing", value: [{ text: `top ${topPercent}%` }] });
-  lines.push(
-    { key: "category", value: [{ text: rating.category ?? "none" }] },
-    {
+  lines.push({ key: "category", value: [{ text: rating.category ?? "none" }] });
+  if (hasHistory(rating.history))
+    lines.push({
       key: "history",
       value: [
         { text: sparkline(rating.history, SPARK_BARS), paint: p.spark },
         ...(rise ? [{ text: `  ${rise}`, paint: p.good }] : []),
       ],
-    },
-    { key: "measured", value: [{ text: rating.measuredOn }] },
-  );
+    });
+  lines.push({ key: "measured", value: [{ text: rating.measuredOn }] });
   return lines;
 }
 
@@ -231,6 +289,7 @@ export interface RenderOptions {
   /** Terminal columns. */
   width: number;
   palette: Palette;
+  scale?: Scale;
 }
 
 /** The whole output, as lines, without a trailing newline. */
@@ -255,24 +314,31 @@ export function render(
   out.push(`${p.good("✓")} ${p.muted("Domain Rating read from Ahrefs")}`, "");
 
   const label = result.rating.drLabel;
-  const pixelCols = pixelWidth(label);
-  const rows = pixels(label, p).map(draw);
-  const caption = p.key(CAPTION);
-  // A row ending in the last column wraps in some terminals, so every
-  // layout keeps one column free.
-  const sideBySide = columns - 1 >= pixelCols + GUTTER + KEY_WIDTH + 20;
+  const scale = options.scale ?? 1;
+  const pixelCols = pixelWidth(label, scale);
+  const rows = pixels(label, p, scale).map(draw);
+  // Under the pixels and aligned with them, cut to fit like any other line.
+  const caption = (room: number) =>
+    draw(fit([{ text: PAD + CAPTION, paint: p.key }], room));
+  const sideBySide = columns >= sideBySideColumns(label, scale);
 
   if (sideBySide) {
     const room = columns - 1 - pixelCols - GUTTER;
     const height = Math.max(rows.length, lines.length);
+    // Level with the top of the pixels, like the art; beside the taller
+    // double-size face the block sits in the middle instead.
+    const offset =
+      scale === 2
+        ? Math.max(0, Math.floor((rows.length - lines.length) / 2))
+        : 0;
     for (let i = 0; i < height; i += 1) {
       const left = rows[i] ?? " ".repeat(pixelCols);
-      const line = lines[i];
+      const line = lines[i - offset];
       out.push(line ? left + " ".repeat(GUTTER) + keyed(line, p, room) : left);
     }
-    out.push(caption);
+    out.push(caption(columns - 1));
   } else {
-    if (columns - 1 >= pixelCols) out.push(...rows, caption, "");
+    if (columns - 1 >= pixelCols) out.push(...rows, caption(columns - 1), "");
     out.push(...lines.map((line) => keyed(line, p, columns - 1)));
   }
   return [...out, ...footer(result, p)];

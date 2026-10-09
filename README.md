@@ -14,14 +14,14 @@ npx drcheck confettisaas.com
 `drcheck` asks domainrating.lol about a domain and prints the same figures the
 site's "The Terminal" share graphic draws:
 
-| line       | what it is                                                                           |
-| ---------- | ------------------------------------------------------------------------------------ |
-| `rating`   | the [Ahrefs Domain Rating](https://ahrefs.com/website-authority-checker), out of 100 |
-| `rank`     | its position among every site on the domainrating.lol ranking                        |
-| `standing` | its percentile, when it is in the top half                                           |
-| `category` | the category it is filed under                                                       |
-| `history`  | every daily reading as a sparkline, and the rise since the first                     |
-| `measured` | the day the rating was read                                                          |
+| line       | what it is                                                                                            |
+| ---------- | ----------------------------------------------------------------------------------------------------- |
+| `rating`   | the [Ahrefs Domain Rating](https://ahrefs.com/website-authority-checker), out of 100                  |
+| `rank`     | its position among every site on the domainrating.lol ranking                                         |
+| `standing` | its percentile, when it is in the top half                                                            |
+| `category` | the category it is filed under                                                                        |
+| `history`  | every daily reading as a sparkline, and the rise since the first; left out until the rating has moved |
+| `measured` | the day the rating was read                                                                           |
 
 ### Domains that are not listed yet
 
@@ -40,12 +40,25 @@ there, and unlock it with a one-off payment or for free with a badge.
 
 Pass `--no-create` to only look a domain up.
 
+### Full screen
+
+```sh
+npx drcheck confettisaas.com --full
+```
+
+`--full` turns the check into a screen of its own, like the share graphic's
+window: the title along the top, the output centred, and the rating drawn at
+double size when the terminal has room. It reads the rating again every hour
+and says when it last did and when it will next. `r` refreshes now, `q`, `Esc`
+or `Ctrl+C` quits, and your terminal comes back as it was.
+
 ## Usage
 
 ```
 npx drcheck <domain> [options]
 
 Options
+  --full        Full screen, refreshed every hour (r refreshes, q quits)
   --json        Print the raw result as JSON
   --no-create   Only look the domain up; never list it
   -v, --version Print the version

@@ -8,9 +8,12 @@ import { runFull } from "./full.js";
 import { spin } from "./spinner.js";
 
 /**
- * drcheck: a website's Domain Rating, its rank on domainrating.lol, its
- * category and its history, printed the way The Terminal share graphic
- * draws them.
+ * domainrating, also installed as `drcheck`: a website's Domain Rating, its
+ * rank on domainrating.lol, its category and its history, printed the way
+ * The Terminal share graphic draws them.
+ *
+ * npm would not take the name `drcheck` (too close to `depcheck`), so the
+ * package carries the site's name and keeps `drcheck` as a second command.
  *
  * A domain that is not on domainrating.lol yet is listed there, locked, and
  * the output ends with the listing's page, where it can be claimed and
@@ -20,10 +23,10 @@ import { spin } from "./spinner.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
-const HELP = `drcheck ${version}: Domain Rating from your terminal, by domainrating.lol
+const HELP = `domainrating ${version}: a website's Domain Rating from your terminal
 
 Usage
-  npx drcheck <domain>
+  npx domainrating <domain>
 
 Options
   --full        Full screen, refreshed every hour (r refreshes, q quits)
@@ -42,9 +45,11 @@ Environment
   DRCHECK_API_URL   Talk to another server (default ${DEFAULT_API_URL})
 
 Examples
-  npx drcheck confettisaas.com
-  npx drcheck confettisaas.com --full
-  npx drcheck https://www.example.com/pricing --json
+  npx domainrating confettisaas.com
+  npx domainrating confettisaas.com --full
+  npx domainrating https://www.example.com/pricing --json
+
+Installed globally (npm i -g domainrating), the command is also drcheck.
 `;
 
 /** What the user typed, as a hostname, for the progress line only. The
@@ -81,7 +86,7 @@ async function check(
     return fail(errP, "--full needs an interactive terminal.");
   const options = {
     baseUrl: apiBase(),
-    userAgent: `drcheck/${version} (+https://github.com/l4r-s/drcheck)`,
+    userAgent: `domainrating/${version} (+https://github.com/l4r-s/drcheck)`,
   };
   const host = hostOf(args.domain);
   const quiet = args.json;
@@ -175,7 +180,7 @@ main(process.argv.slice(2)).then(
     process.exitCode = code;
   },
   (error: unknown) => {
-    process.stderr.write(`drcheck crashed: ${String(error)}\n`);
+    process.stderr.write(`domainrating crashed: ${String(error)}\n`);
     process.exitCode = 1;
   },
 );

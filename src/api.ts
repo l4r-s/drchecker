@@ -91,7 +91,7 @@ function isResult(body: unknown): body is DrcheckResult {
 function expectResult(status: number, body: unknown, host: string) {
   if (!isResult(body))
     throw new ApiError(
-      `${host} answered in a shape this version of drcheck does not understand. Try the latest: npx drcheck@latest`,
+      `${host} answered in a shape this version does not understand. Try the latest: npx domainrating@latest`,
       status,
       "bad_response",
     );

@@ -1,5 +1,5 @@
 {
-  "name": "drcheck",
+  "name": "domainrating",
   "version": "0.1.0",
   "description": "Check a website's Domain Rating from your terminal, ranked on domainrating.lol.",
   "keywords": [
@@ -23,6 +23,7 @@
   "author": "Lars Bättig",
   "type": "module",
   "bin": {
+    "domainrating": "dist/cli.js",
     "drcheck": "dist/cli.js"
   },
   "files": [

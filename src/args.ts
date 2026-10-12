@@ -30,7 +30,7 @@ export function parseArgs(argv: readonly string[]): Args {
   if (positional.length === 0)
     return {
       kind: "usage",
-      message: "Which domain? Try: npx drcheck example.com",
+      message: "Which domain? Try: npx domainrating example.com",
     };
   if (positional.length > 1)
     return {

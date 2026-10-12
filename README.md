@@ -1,17 +1,20 @@
-# drcheck
+# domainrating
 
 A website's Domain Rating from your terminal: the rating, its rank on
 [domainrating.lol](https://domainrating.lol), its category and its history.
 
 ```sh
-npx drcheck confettisaas.com
+npx domainrating confettisaas.com
 ```
 
 ![drcheck confettisaas.com](docs/drcheck.png)
 
+Installed globally (`npm i -g domainrating`), the command is also `drcheck`,
+as in the picture.
+
 ## What it does
 
-`drcheck` asks domainrating.lol about a domain and prints the same figures the
+`domainrating` asks domainrating.lol about a domain and prints the same figures the
 site's "The Terminal" share graphic draws:
 
 | line       | what it is                                                                                            |
@@ -25,7 +28,7 @@ site's "The Terminal" share graphic draws:
 
 ### Domains that are not listed yet
 
-If the domain is not on domainrating.lol, `drcheck` lists it there:
+If the domain is not on domainrating.lol, the command lists it there:
 
 1. It checks that the name has a DNS `A` or `AAAA` record (falling back to
    `www.`), so only real websites get listed.
@@ -43,7 +46,7 @@ Pass `--no-create` to only look a domain up.
 ### Full screen
 
 ```sh
-npx drcheck confettisaas.com --full
+npx domainrating confettisaas.com --full
 ```
 
 `--full` turns the check into a screen of its own, like the share graphic's
@@ -55,7 +58,7 @@ or `Ctrl+C` quits, and your terminal comes back as it was.
 ## Usage
 
 ```
-npx drcheck <domain> [options]
+npx domainrating <domain> [options]
 
 Options
   --full        Full screen, refreshed every hour (r refreshes, q quits)
@@ -123,8 +126,8 @@ progress spinner goes to stderr and only on a terminal.
 
 ## Privacy
 
-`drcheck` sends the domain you typed to domainrating.lol, with a
-`drcheck/<version>` user agent. Nothing else: no telemetry, no config files, no
+The command sends the domain you typed to domainrating.lol, with a
+`domainrating/<version>` user agent. Nothing else: no telemetry, no config files, no
 runtime dependencies.
 
 ## Development

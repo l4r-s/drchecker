@@ -86,7 +86,7 @@ async function check(
     return fail(errP, "--full needs an interactive terminal.");
   const options = {
     baseUrl: apiBase(),
-    userAgent: `domainrating/${version} (+https://github.com/l4r-s/drcheck)`,
+    userAgent: `domainrating/${version} (+https://github.com/l4r-s/domainrating)`,
   };
   const host = hostOf(args.domain);
   const quiet = args.json;

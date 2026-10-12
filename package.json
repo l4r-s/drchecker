@@ -14,10 +14,10 @@
   "homepage": "https://domainrating.lol",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/l4r-s/drcheck.git"
+    "url": "git+https://github.com/l4r-s/domainrating.git"
   },
   "bugs": {
-    "url": "https://github.com/l4r-s/drcheck/issues"
+    "url": "https://github.com/l4r-s/domainrating/issues"
   },
   "license": "MIT",
   "author": "Lars Bättig",

@@ -1,6 +1,6 @@
 {
   "name": "domainrating",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Check a website's Domain Rating from your terminal, ranked on domainrating.lol.",
   "keywords": [
     "domain-rating",
